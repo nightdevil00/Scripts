@@ -16,6 +16,19 @@ inside the chroot yourself.
 
 On a stock Arch ISO every one of these is already present.
 
+## Fetch and run
+
+```sh
+curl -LO https://raw.githubusercontent.com/nightdevil00/Scripts/main/System_Repair/system_repair.sh \
+  && chmod +x system_repair.sh \
+  && sudo ./system_repair.sh
+```
+
+It has to run as root — it mounts filesystems and opens LUKS devices, and exits
+immediately with `This script must be run as root.` otherwise. Run it from
+whatever directory you like; it cleans up its own mounts on exit, whether it
+finishes or you interrupt it.
+
 ## Usage
 
 ```sh
