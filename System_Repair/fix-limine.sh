@@ -36,7 +36,7 @@ echo "[3/5] removing shadow and stale configs"
 rm -f "$ESP/EFI/limine/limine.conf" "$ESP/EFI/BOOT/limine.conf" "$CONF.old"
 rm -f "$CONF"
 
-echo "[4/5] regenerating entries (limine-install + mkinitcpio, this takes a moment)"
+echo "[4/5] regenerating entries (limine-install + mkinitcpio + snapshot sync, this takes a moment)"
 restore_previous() {
     echo "ERROR: $1" >&2
     if [ -f "$CONF" ]; then
@@ -52,6 +52,17 @@ restore_previous() {
 }
 if ! limine-update; then
     restore_previous "limine-update failed"
+fi
+
+# limine-update regenerates the OS and kernel entries but drops the
+# "//Snapshots" block, because that block is owned by limine-snapper-sync.
+# Re-add it now so the snapshot entries do not disappear from the boot menu.
+if command -v limine-snapper-sync >/dev/null 2>&1; then
+    if ! limine-snapper-sync; then
+        echo "WARN: limine-snapper-sync failed; snapshot entries may be missing" >&2
+    fi
+else
+    echo "WARN: limine-snapper-sync is not installed; snapshot entries may be missing" >&2
 fi
 
 echo "[5/5] verifying"
@@ -70,6 +81,16 @@ fi
 if ! grep -qE '^[[:space:]]*//[^/]' "$CONF"; then
     echo "  - no '//kernel' sub-entry found" >&2
     fail=1
+fi
+
+# Snapshot submenu. limine-snapper-sync only writes it when Snapper actually
+# has bootable snapshots, so require it only in that case.
+if command -v limine-snapper-list >/dev/null 2>&1 \
+    && limine-snapper-list 2>/dev/null | grep -qE '^[[:space:]]*[0-9]+[[:space:]]'; then
+    if ! grep -qE '^[[:space:]]*//Snapshots' "$CONF"; then
+        echo "  - snapshots exist but no '//Snapshots' submenu was generated" >&2
+        fail=1
+    fi
 fi
 
 # Every boot(): path used by an entry must really exist on the ESP.
